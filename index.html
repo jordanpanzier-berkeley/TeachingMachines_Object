@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Classifier</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 480px; margin: 0 auto; padding: 16px; background: #fff; color: #111; }
+  .btns { display: flex; gap: 8px; margin-bottom: 12px; }
+  button, label.btn { flex: 1; padding: 12px; font-size: 16px; border: 0; border-radius: 8px; background: #111; color: #fff; text-align: center; cursor: pointer; }
+  #view { width: 100%; aspect-ratio: 1; background: #eee; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; color: #888; }
+  #view video, #view img { width: 100%; height: 100%; object-fit: cover; }
+  #top { font-size: 28px; font-weight: 700; margin: 16px 0 8px; min-height: 34px; }
+  .row { margin: 6px 0; }
+  .bar { height: 10px; background: #eee; border-radius: 5px; overflow: hidden; }
+  .fill { height: 100%; background: #111; transition: width .15s; }
+  .lbl { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 2px; }
+  h1 { font-size: 22px; text-align: center; margin: 8px 0 12px; }
+  .pets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px; text-align: center; font-size: 13px; }
+  .pets img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; display: block; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+  <h1>Check if your pet looks like my favorite pets</h1>
+  <div class="pets">
+    <div><img src="pets/gravy.png" alt="Gravy">Gravy</div>
+    <div><img src="pets/maxx.png" alt="Maxx">Maxx</div>
+    <div><img src="pets/milo.png" alt="Milo">Milo</div>
+    <div><img src="pets/strudel.png" alt="Strudel">Strudel</div>
+  </div>
+  <div class="btns">
+    <button id="cam">Camera</button>
+    <label class="btn">Upload<input id="file" type="file" accept="image/*" hidden></label>
+  </div>
+  <div id="view">Loading…</div>
+  <div id="top"></div>
+  <div id="bars"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.7.4/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.5/dist/teachablemachine-image.min.js"></script>
+<script>
+const URL = "https://teachablemachine.withgoogle.com/models/PYU4fPFPR/";
+const view = document.getElementById("view");
+let model, stream, loopId;
+
+(async () => {
+  model = await tmImage.load(URL + "model.json", URL + "metadata.json");
+  view.textContent = "Pick camera or upload";
+})();
+
+async function predict(el) {
+  const preds = await model.predict(el);
+  preds.sort((a, b) => b.probability - a.probability);
+  document.getElementById("top").textContent = preds[0].className;
+  document.getElementById("bars").innerHTML = preds.map(p => {
+    const pct = Math.round(p.probability * 100);
+    return `<div class="row"><div class="lbl"><span>${p.className}</span><span>${pct}%</span></div><div class="bar"><div class="fill" style="width:${pct}%"></div></div></div>`;
+  }).join("");
+}
+
+function stopCam() {
+  cancelAnimationFrame(loopId);
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  stream = null;
+}
+
+document.getElementById("cam").onclick = async () => {
+  if (!model) return;
+  stopCam();
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+  } catch { view.textContent = "No camera access"; return; }
+  const v = document.createElement("video");
+  v.playsInline = true; v.muted = true; v.srcObject = stream;
+  view.replaceChildren(v);
+  await v.play();
+  const loop = async () => { await predict(v); loopId = requestAnimationFrame(loop); };
+  loop();
+};
+
+document.getElementById("file").onchange = e => {
+  const f = e.target.files[0];
+  if (!f || !model) return;
+  stopCam();
+  const img = new Image();
+  img.onload = () => predict(img);
+  img.src = window.URL.createObjectURL(f);
+  view.replaceChildren(img);
+  e.target.value = "";
+};
+</script>
+</body>
+</html>

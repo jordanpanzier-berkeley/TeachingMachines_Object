@@ -1,0 +1,12 @@
+{
+  "name": "My Favorite Pets",
+  "description": "Photos from my life of four pets: Gravy, Strudel, Maxx, and Milo.",
+  "source": "Personal photos",
+  "model": "https://teachablemachine.withgoogle.com/models/PYU4fPFPR/",
+  "classes": [
+    { "label": "Gravy", "description": "Photos of Gravy" },
+    { "label": "Strudel", "description": "Photos of Strudel" },
+    { "label": "Maxx", "description": "Photos of Maxx" },
+    { "label": "Milo", "description": "Photos of Milo" }
+  ]
+}
